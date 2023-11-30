@@ -1,0 +1,367 @@
+diff --git a/board/recalbox/copy-recalbox-archives.sh b/board/recalbox/copy-recalbox-archives.sh
+index 3869d2ff3d..eddd73e90b 100755
+--- a/board/recalbox/copy-recalbox-archives.sh
++++ b/board/recalbox/copy-recalbox-archives.sh
+@@ -186,6 +186,25 @@ case "${RECALBOX_TARGET}" in
+ 	GENIMAGE_CFG="${BR2_EXTERNAL_RECALBOX_PATH}/board/recalbox/x86/genimage.cfg"
+ 	;;
+ 
++	OPIZERO3)
++	rm -rf "${BINARIES_DIR}/boot-data/boot" || exit 1
++	mkdir -p "${BINARIES_DIR}/boot-data/boot" || exit 1
++	mkdir -p "${BINARIES_DIR}/boot-data/boot/allwinner" || exit 1
++	mkdir -p "${BINARIES_DIR}/boot-data/boot/extlinux" || exit 1
++
++	# /boot
++	echo "generating boot"
++	cp "${BR2_EXTERNAL_RECALBOX_PATH}/board/recalbox/opizero3/extlinux.conf" "${BINARIES_DIR}/boot-data/boot/extlinux/extlinux.conf" || exit 1
++	cp "${BR2_EXTERNAL_RECALBOX_PATH}/board/recalbox/anbernic/boot-640x480.ppm" "${BINARIES_DIR}/boot-data/boot.ppm" || exit 1
++	cp "${BINARIES_DIR}/allwinner/sun50i-h616-orangepi-zero3.dtb" "${BINARIES_DIR}/boot-data/boot/allwinner/" || exit 1
++	cp "${BINARIES_DIR}/initrd" "${BINARIES_DIR}/boot-data/boot/initrd" || exit 1
++	cp "${BINARIES_DIR}/Image" "${BINARIES_DIR}/boot-data/boot/linux" || exit 1
++	cp "${BINARIES_DIR}/rootfs.squashfs" "${BINARIES_DIR}/boot-data/boot/recalbox" || exit 1
++
++	GENIMAGE_CFG="${BR2_EXTERNAL_RECALBOX_PATH}/board/recalbox/opizero3/genimage.cfg"
++	
++	;;
++
+ 	*)
+ 	echo "Outch. Unknown target ${RECALBOX_TARGET} (see copy-recalbox-archives.sh)" >&2
+ 	bash
+diff --git a/board/recalbox/fsoverlay/etc/init.d/S31emulationstation b/board/recalbox/fsoverlay/etc/init.d/S31emulationstation
+index aeac63cbd1..881182d73c 100755
+--- a/board/recalbox/fsoverlay/etc/init.d/S31emulationstation
++++ b/board/recalbox/fsoverlay/etc/init.d/S31emulationstation
+@@ -41,6 +41,8 @@ case "$1" in
+ 			HOME=/recalbox/share/system LANG="${settings_lang}.UTF-8" SDL_VIDEO_GL_DRIVER=/usr/lib/libGLESv2.so SDL_VIDEO_EGL_DRIVER=/usr/lib/libEGL.so SDL_NOMOUSE=1 start-stop-daemon -S -q -m -p /var/run/emulationstation.pid  --exec "$ESBIN" &
+         elif grep -q -E 'rpi5' /recalbox/recalbox.arch; then
+ 			HOME=/recalbox/share/system LANG="${settings_lang}.UTF-8" MESA_LOADER_DRIVER_OVERRIDE=vc4 SDL_VIDEO_GL_DRIVER=/usr/lib/libGLESv2.so SDL_VIDEO_EGL_DRIVER=/usr/lib/libEGL.so SDL_NOMOUSE=1 start-stop-daemon -S -q -m -p /var/run/emulationstation.pid  --exec "$ESBIN" &
++		elif grep -q -E 'opizero3' /recalbox/recalbox.arch; then
++			HOME=/recalbox/share/system LANG="${settings_lang}.UTF-8" SDL_VIDEO_GL_DRIVER=/usr/lib/libGLESv2.so SDL_VIDEO_EGL_DRIVER=/usr/lib/libEGL.so SDL_NOMOUSE=1 start-stop-daemon -S -q -m -p /var/run/emulationstation.pid  --exec "$ESBIN" &
+ 		else
+ 			HOME=/recalbox/share/system LANG="${settings_lang}.UTF-8" SDL_VIDEO_GL_DRIVER=/usr/lib/libGLESv2.so SDL_VIDEO_EGL_DRIVER=/usr/lib/libGLESv2.so SDL_NOMOUSE=1 start-stop-daemon -S -q -m -p /var/run/emulationstation.pid  --exec "$ESBIN" &
+ 		fi
+diff --git a/package/amiberry33/amiberry33.mk b/package/amiberry33/amiberry33.mk
+index 789ac853e8..d51edbae72 100644
+--- a/package/amiberry33/amiberry33.mk
++++ b/package/amiberry33/amiberry33.mk
+@@ -20,6 +20,8 @@ else ifeq ($(BR2_PACKAGE_RECALBOX_TARGET_ODROIDXU4),y)
+ AMIBERRY33_PLATFORM=xu4
+ else ifeq ($(BR2_PACKAGE_RECALBOX_TARGET_ODROIDGO2),y)
+ AMIBERRY33_PLATFORM=go-advance
++else ifeq ($(BR2_PACKAGE_RECALBOX_TARGET_OPIZERO3),y)
++AMIBERRY33_PLATFORM=a64
+ endif
+ 
+ define AMIBERRY33_BUILD_CMDS
+diff --git a/package/libretro-emuscv/libretro-emuscv-0000-patch-sdl2-config.patch b/package/libretro-emuscv/libretro-emuscv-0000-patch-sdl2-config.patch
+index 69aef49122..dec31083cd 100644
+--- a/package/libretro-emuscv/libretro-emuscv-0000-patch-sdl2-config.patch
++++ b/package/libretro-emuscv/libretro-emuscv-0000-patch-sdl2-config.patch
+@@ -9,9 +9,9 @@ index cce6c8a..239a41c 100755
+ -	LDFLAGS += -I/usr/include/SDL2 -L/usr/lib/x86_64-linux-gnu -lSDL2
+ -	CFLAGS += -I/usr/include/SDL2 `sdl2-config --cflags`
+ -	CXXFLAGS += -I/usr/include/SDL2 `sdl2-config --cflags`
+-+	LDFLAGS += -I. `pkg-config sdl2 --libs`
+-+	CFLAGS += -I. `pkg-config sdl2 --cflags`
+-+	CXXFLAGS += -I. `pkg-config sdl2 --cflags`
+++	LDFLAGS += -lSDL2
+++	CFLAGS += -I. `pkg-config sdl2 --cflags-only-other`
+++	CXXFLAGS += -I. `pkg-config sdl2 --cflags-only-other`
+  
+  	# Raspberry Pi
+  # ---FOR TEST ---
+diff --git a/package/libretro-parallel-n64/libretro-parallel-n64.mk b/package/libretro-parallel-n64/libretro-parallel-n64.mk
+index 2a1975d6cf..e122ae86df 100644
+--- a/package/libretro-parallel-n64/libretro-parallel-n64.mk
++++ b/package/libretro-parallel-n64/libretro-parallel-n64.mk
+@@ -89,6 +89,12 @@ LIBRETRO_PARALLEL_N64_PLATFORM=unix
+ LIBRETRO_PARALLEL_N64_CFLAGS = $(COMPILER_COMMONS_CFLAGS_NOLTO)
+ LIBRETRO_PARALLEL_N64_CXXFLAGS = $(COMPILER_COMMONS_CXXFLAGS_NOLTO)
+ LIBRETRO_PARALLEL_N64_LDFLAGS = $(COMPILER_COMMONS_LDFLAGS_NOLTO)
++else ifeq ($(BR2_PACKAGE_RECALBOX_TARGET_OPIZERO3),y)
++LIBRETRO_PARALLEL_N64_PLATFORM = unix gles
++LIBRETRO_PARALLEL_N64_SUPP_OPT=  HAVE_PARALLEL=1 CPUFLAGS="-DCLASSIC -DARM64 -DARM_FIX"
++LIBRETRO_PARALLEL_N64_CFLAGS = $(COMPILER_COMMONS_CFLAGS_NOLTO)
++LIBRETRO_PARALLEL_N64_CXXFLAGS = $(COMPILER_COMMONS_CXXFLAGS_NOLTO)
++LIBRETRO_PARALLEL_N64_LDFLAGS = $(COMPILER_COMMONS_LDFLAGS_NOLTO)
+ 
+ else
+ LIBRETRO_PARALLEL_N64_PLATFORM=$(RETROARCH_LIBRETRO_PLATFORM)
+diff --git a/package/libretro-pcsx_rearmed/libretro-pcsx_rearmed.mk b/package/libretro-pcsx_rearmed/libretro-pcsx_rearmed.mk
+index bbebb195a5..ab7b220b08 100644
+--- a/package/libretro-pcsx_rearmed/libretro-pcsx_rearmed.mk
++++ b/package/libretro-pcsx_rearmed/libretro-pcsx_rearmed.mk
+@@ -23,6 +23,9 @@ LIBRETRO_PCSX_REARMED_PLATFORM=armv7 odroidxu4 neon
+ else ifeq ($(BR2_PACKAGE_RECALBOX_TARGET_RG353X),y)
+ LIBRETRO_PCSX_REARMED_PLATFORM=arm64
+ LIBRETRO_PCSX_REARMED_OPTS= CPUFLAGS="-march=armv8-a -mtune=cortex-a55"
++else ifeq ($(BR2_PACKAGE_RECALBOX_TARGET_OPIZERO3),y)
++LIBRETRO_PCSX_REARMED_PLATFORM=arm64
++LIBRETRO_PCSX_REARMED_OPTS= CPUFLAGS="-march=armv8-a -mtune=cortex-a53"
+ else ifeq ($(BR2_PACKAGE_RECALBOX_TARGET_X86_64),y)
+ LIBRETRO_PCSX_REARMED_PLATFORM=unix
+ LIBRETRO_PCSX_REARMED_OPTS= BUILTIN_GPU=neon DYNAREC=
+diff --git a/package/libretro-yabasanshiro/libretro-yabasanshiro.mk b/package/libretro-yabasanshiro/libretro-yabasanshiro.mk
+index 3124391f83..68c291f920 100644
+--- a/package/libretro-yabasanshiro/libretro-yabasanshiro.mk
++++ b/package/libretro-yabasanshiro/libretro-yabasanshiro.mk
+@@ -20,6 +20,10 @@ else ifeq ($(BR2_PACKAGE_RECALBOX_TARGET_RG353X),y)
+ LIBRETRO_YABASANSHIRO_PLATFORM=arm64
+ LIBRETRO_YABASANSHIRO_SUPP_OPT = FORCE_GLES=1
+ LIBRETRO_YABASANSHIRO_LDFLAGS_OPT = -lmali -lpthread
++else ifeq ($(BR2_PACKAGE_RECALBOX_TARGET_OPIZERO3),y)
++LIBRETRO_YABASANSHIRO_PLATFORM=arm64
++LIBRETRO_YABASANSHIRO_SUPP_OPT = FORCE_GLES=1
++LIBRETRO_YABASANSHIRO_LDFLAGS_OPT = -lpthread
+ else ifeq ($(BR2_PACKAGE_RECALBOX_TARGET_RPI4_64)$(BR2_PACKAGE_RECALBOX_TARGET_RPI5_64),y)
+ LIBRETRO_YABASANSHIRO_PLATFORM=rpi4
+ else
+diff --git a/package/recalbox-romfs2/scripts/configin.py b/package/recalbox-romfs2/scripts/configin.py
+index b0b3de23ff..da62d968d0 100644
+--- a/package/recalbox-romfs2/scripts/configin.py
++++ b/package/recalbox-romfs2/scripts/configin.py
+@@ -8,7 +8,8 @@ from keyvaluesettings import keyValueSettings
+ class ConfigIn:
+ 
+     def __init__(self, root: str):
+-        self.__config = keyValueSettings(os.path.join(root, "output/.config"), False)
++        print(os.path.join(root, "buildroot/.config"))
++        self.__config = keyValueSettings(os.path.join(root, "buildroot/.config"), False)
+         self.__config.loadFile(True)
+         self.__arch: str = self.__LoadArch()
+         pass
+diff --git a/package/recalbox-system/Config.in b/package/recalbox-system/Config.in
+index 2b284ebec0..e6f7192226 100644
+--- a/package/recalbox-system/Config.in
++++ b/package/recalbox-system/Config.in
+@@ -56,6 +56,15 @@ config BR2_PACKAGE_RECALBOX_TARGET_RPIZERO2
+ 	select BR2_PACKAGE_RECALBOX_CRT
+ 	select BR2_PACKAGE_RPI_DTOVERLAY
+ 
++config BR2_PACKAGE_RECALBOX_TARGET_OPIZERO3
++	bool "opizero3"
++	select BR2_PACKAGE_MESA3D
++	select BR2_PACKAGE_MESA3D_GALLIUM_DRIVER_PANFROST
++	select BR2_PACKAGE_MESA3D_OPENGL_ES
++	select BR2_PACKAGE_SDL2_KMSDRM
++	select BR2_PACKAGE_MESA3D_OPENGL_EGL
++
++
+ config BR2_PACKAGE_RECALBOX_TARGET_RPI4_64
+ 	bool "rpi4_64"
+ 	select BR2_PACKAGE_RPI_FIRMWARE
+@@ -135,6 +144,7 @@ config BR2_PACKAGE_RECALBOX_HAS_LIBGLES
+ 	  BR2_PACKAGE_RECALBOX_TARGET_RPI5_64 ||\
+ 	  BR2_PACKAGE_RECALBOX_TARGET_ODROIDXU4 ||\
+ 	  BR2_PACKAGE_RECALBOX_TARGET_ODROIDGO2 ||\
++	  BR2_PACKAGE_RECALBOX_TARGET_OPIZERO3 ||\
+ 	  BR2_PACKAGE_RECALBOX_TARGET_RG353X
+ 
+ config BR2_PACKAGE_RECALBOX_HAS_LIBGLES3
+@@ -145,6 +155,7 @@ config BR2_PACKAGE_RECALBOX_HAS_LIBGLES3
+ 	  BR2_PACKAGE_RECALBOX_TARGET_RPI5_64 ||\
+ 	  BR2_PACKAGE_RECALBOX_TARGET_ODROIDXU4 ||\
+ 	  BR2_PACKAGE_RECALBOX_TARGET_ODROIDGO2 ||\
++	  BR2_PACKAGE_RECALBOX_TARGET_OPIZERO3 ||\
+ 	  BR2_PACKAGE_RECALBOX_TARGET_RG353X
+ 
+ config BR2_PACKAGE_RECALBOX_HAS_VULKAN
+@@ -168,6 +179,7 @@ config BR2_PACKAGE_RECALBOX_HAS_KMS
+ 	  BR2_PACKAGE_RECALBOX_TARGET_RPI5_64 ||\
+ 	  BR2_PACKAGE_RECALBOX_TARGET_ODROIDXU4 ||\
+ 	  BR2_PACKAGE_RECALBOX_TARGET_ODROIDGO2 ||\
++	  BR2_PACKAGE_RECALBOX_TARGET_OPIZERO3 ||\
+ 	  BR2_PACKAGE_RECALBOX_TARGET_RG353X
+ 
+ config BR2_PACKAGE_RECALBOX_HAS_LIBMALI
+@@ -189,6 +201,7 @@ config BR2_PACKAGE_RECALBOX_EGL_NO_X11
+ 	  BR2_PACKAGE_RECALBOX_TARGET_RPI5_64 ||\
+ 	  BR2_PACKAGE_RECALBOX_TARGET_ODROIDXU4 ||\
+ 	  BR2_PACKAGE_RECALBOX_TARGET_ODROIDGO2 ||\
++	  BR2_PACKAGE_RECALBOX_TARGET_OPIZERO3 ||\
+ 	  BR2_PACKAGE_RECALBOX_TARGET_RG353X
+ 
+ # shader slang (used by retroarch)
+diff --git a/package/recalbox-system/recalbox-system.mk b/package/recalbox-system/recalbox-system.mk
+index d834006a0a..c56d38c656 100644
+--- a/package/recalbox-system/recalbox-system.mk
++++ b/package/recalbox-system/recalbox-system.mk
+@@ -65,6 +65,9 @@ RECALBOX_SYSTEM_RECALBOX_CONF=x86
+ else ifeq ($(BR2_PACKAGE_RECALBOX_TARGET_X86_64),y)
+ RECALBOX_SYSTEM_PLATFORM=x86_64
+ RECALBOX_SYSTEM_RECALBOX_CONF=x86_64
++else ifeq ($(BR2_PACKAGE_RECALBOX_TARGET_OPIZERO3),y)
++RECALBOX_SYSTEM_PLATFORM=opizero3
++RECALBOX_SYSTEM_RECALBOX_CONF=opizero3
+ else
+ RECALBOX_SYSTEM_PLATFORM=rpi1
+ RECALBOX_SYSTEM_RECALBOX_CONF=rpi1
+diff --git a/projects/frontend/es-app/src/MainRunner.cpp b/projects/frontend/es-app/src/MainRunner.cpp
+index 43c2185ebe..a377792de6 100644
+--- a/projects/frontend/es-app/src/MainRunner.cpp
++++ b/projects/frontend/es-app/src/MainRunner.cpp
+@@ -473,6 +473,7 @@ void MainRunner::CheckFirstTimeWizard(WindowManager& window)
+       case BoardType::Pi5:
+       case BoardType::Pi3plus:
+       case BoardType::UnknownPi:
++      case BoardType::Opi03:
+       default: break;
+     }
+     RecalboxConf::Instance().SetFirstTimeUse(false);
+@@ -1100,7 +1101,7 @@ bool MainRunner::ProcessSpecialInputs(const InputCompactEvent& event)
+   const BoardType board = Board::Instance().GetBoardType();
+   if (board == BoardType::OdroidAdvanceGo || board == BoardType::OdroidAdvanceGoSuper || board == BoardType::Pi400 ||
+       board == BoardType::RG353P || board == BoardType::RG353V || board == BoardType::RG353M || board == BoardType::RG503 ||
+-      board == BoardType::RG351V || board == BoardType::RG351P)
++      board == BoardType::RG351V || board == BoardType::RG351P || board == BoardType::Opi03)
+     return false;
+   const InputEvent& raw = event.RawEvent();
+   if (raw.Type() == InputEvent::EventType::Key)
+diff --git a/projects/frontend/es-app/src/guis/menus/GuiMenuAdvancedSettings.cpp b/projects/frontend/es-app/src/guis/menus/GuiMenuAdvancedSettings.cpp
+index 726a7f6c13..14c550e7ac 100644
+--- a/projects/frontend/es-app/src/guis/menus/GuiMenuAdvancedSettings.cpp
++++ b/projects/frontend/es-app/src/guis/menus/GuiMenuAdvancedSettings.cpp
+@@ -157,6 +157,7 @@ GuiMenuAdvancedSettings::OverclockList GuiMenuAdvancedSettings::AvailableOverclo
+     case BoardType::RG503:
+     case BoardType::RG351V:
+     case BoardType::PCx86:
++    case BoardType::Opi03:
+     case BoardType::PCx64: break;
+   }
+   { LOG(LogDebug) << "[Overclock] Board: " << (int)Board::Instance().GetBoardType(); }
+diff --git a/projects/frontend/es-app/src/guis/menus/GuiMenuSystem.cpp b/projects/frontend/es-app/src/guis/menus/GuiMenuSystem.cpp
+index b45d5f20b1..1b531893bc 100644
+--- a/projects/frontend/es-app/src/guis/menus/GuiMenuSystem.cpp
++++ b/projects/frontend/es-app/src/guis/menus/GuiMenuSystem.cpp
+@@ -47,6 +47,7 @@ GuiMenuSystem::GuiMenuSystem(WindowManager& window, SystemManager& systemManager
+     case BoardType::RG353M:               arch = "RG353M"; break;
+     case BoardType::RG503:                arch = "RG503"; break;
+     case BoardType::RG351V:               arch = "RG351V"; break;
++    case BoardType::Opi03:                arch = "OPi zero 3"; break;
+   }
+   arch.Append(' ').Append(sizeof(void*) == 4 ? "32bits" : "64bits");
+   AddText(_("VERSION"), version.Append(" (").Append(arch).Append(')'), _(MENUMESSAGE_VERSION_HELP_MSG));
+diff --git a/projects/frontend/es-app/src/scraping/scrapers/recalbox/RecalboxEndPoints.cpp b/projects/frontend/es-app/src/scraping/scrapers/recalbox/RecalboxEndPoints.cpp
+index 30798a05a4..403082e890 100644
+--- a/projects/frontend/es-app/src/scraping/scrapers/recalbox/RecalboxEndPoints.cpp
++++ b/projects/frontend/es-app/src/scraping/scrapers/recalbox/RecalboxEndPoints.cpp
+@@ -129,6 +129,7 @@ RecalboxEndPoints::RecalboxEndPoints()
+     case BoardType::RG353M:               mBoard = "RG353M"; break;
+     case BoardType::RG503:                mBoard = "RG503"; break;
+     case BoardType::RG351V:               mBoard = "RG351V"; break;
++    case BoardType::Opi03:                mBoard = "OPi zero 3"; break;
+   }
+ 
+   String servers = mDns.GetTxtRecord(sRootDomainName);
+diff --git a/projects/frontend/es-core/src/Renderer.cpp b/projects/frontend/es-core/src/Renderer.cpp
+index d9c922de7b..2d5a969c05 100644
+--- a/projects/frontend/es-core/src/Renderer.cpp
++++ b/projects/frontend/es-core/src/Renderer.cpp
+@@ -230,6 +230,7 @@ void Renderer::GetResolutionFromConfiguration(int& w, int& h)
+     case BoardType::RG353V:
+     case BoardType::RG353M:
+     case BoardType::RG503:
++    case BoardType::Opi03:
+     default:
+     {
+       ResolutionAdapter adapter;
+diff --git a/projects/frontend/es-core/src/ResolutionAdapter.cpp b/projects/frontend/es-core/src/ResolutionAdapter.cpp
+index 5c9a735b7a..e162d0b3cb 100644
+--- a/projects/frontend/es-core/src/ResolutionAdapter.cpp
++++ b/projects/frontend/es-core/src/ResolutionAdapter.cpp
+@@ -171,6 +171,7 @@ const ResolutionAdapter::ResolutionList& ResolutionAdapter::GetResolutionDetaile
+     case BoardType::RG353V:
+     case BoardType::RG353M:
+     case BoardType::RG503:
++    case BoardType::Opi03:
+     default: break;
+   }
+ 
+diff --git a/projects/frontend/es-core/src/audio/alsa/AlsaController.cpp b/projects/frontend/es-core/src/audio/alsa/AlsaController.cpp
+index 03222d4573..e4f5b957e8 100644
+--- a/projects/frontend/es-core/src/audio/alsa/AlsaController.cpp
++++ b/projects/frontend/es-core/src/audio/alsa/AlsaController.cpp
+@@ -321,6 +321,7 @@ void AlsaController::SetDefaultPlayback(int identifier)
+       case BoardType::OdroidAdvanceGo:
+       case BoardType::PCx86:
+       case BoardType::PCx64:
++      case BoardType::Opi03:
+       default: break;
+     }
+   }
+diff --git a/projects/frontend/es-core/src/audio/pulseaudio/PulseAudioController.cpp b/projects/frontend/es-core/src/audio/pulseaudio/PulseAudioController.cpp
+index ed040c9062..941a62e0ae 100755
+--- a/projects/frontend/es-core/src/audio/pulseaudio/PulseAudioController.cpp
++++ b/projects/frontend/es-core/src/audio/pulseaudio/PulseAudioController.cpp
+@@ -646,6 +646,7 @@ String PulseAudioController::GetActivePlaybackName()
+     case BoardType::UnknownPi:
+     case BoardType::PCx86:
+     case BoardType::PCx64:
++    case BoardType::Opi03:
+     default: break;
+   }
+ 
+@@ -1124,6 +1125,7 @@ String PulseAudioController::GetCardDescription(const pa_card_info& info)
+     case BoardType::PCx64:
+     case BoardType::UndetectedYet:
+     case BoardType::Unknown:
++    case BoardType::Opi03:
+     default:
+     {
+       result = cardName;
+@@ -1174,6 +1176,7 @@ String PulseAudioController::GetPortDescription(const pa_sink_port_info& info, A
+     case BoardType::PCx64:
+     case BoardType::UndetectedYet:
+     case BoardType::Unknown:
++    case BoardType::Opi03:
+     default: break;
+   }
+ 
+@@ -1211,6 +1214,7 @@ String PulseAudioController::GetPortDescription(const pa_card_port_info& info, A
+     case BoardType::PCx64:
+     case BoardType::UndetectedYet:
+     case BoardType::Unknown:
++    case BoardType::Opi03:
+     default: break;
+   }
+ 
+diff --git a/projects/frontend/es-core/src/hardware/Board.cpp b/projects/frontend/es-core/src/hardware/Board.cpp
+index 14db4c891f..34125d9873 100644
+--- a/projects/frontend/es-core/src/hardware/Board.cpp
++++ b/projects/frontend/es-core/src/hardware/Board.cpp
+@@ -62,6 +62,7 @@ IBoardInterface& Board::GetBoardInterface(HardwareMessageSender& messageSender)
+     }
+     case BoardType::PCx86:
+     case BoardType::PCx64:
++    case BoardType::Opi03:
+     {
+       { LOG(LogInfo) << "[Hardware] x86 or x64 PC detected."; }
+       return *(new PcComputers(messageSender));
+@@ -164,6 +165,8 @@ BoardType Board::GetBoardType()
+ {
+   if (mType != BoardType::UndetectedYet) return mType;
+ 
++  return BoardType::Opi03;
++
+   // Try uname (for PC)
+   utsname uName {};
+   memset(&uName, 0, sizeof(uName));
+@@ -292,6 +295,7 @@ bool Board::CanHaveCRTBoard()
+     case BoardType::OdroidAdvanceGoSuper:
+     case BoardType::PCx86:
+     case BoardType::PCx64:
++    case BoardType::Opi03:
+     default: break;
+   }
+ 
+diff --git a/projects/frontend/es-core/src/hardware/BoardType.h b/projects/frontend/es-core/src/hardware/BoardType.h
+index a301b1a405..93d5bd669d 100644
+--- a/projects/frontend/es-core/src/hardware/BoardType.h
++++ b/projects/frontend/es-core/src/hardware/BoardType.h
+@@ -33,4 +33,5 @@ enum class BoardType
+     // PC
+     PCx86,
+     PCx64,
++    Opi03,
+ };
